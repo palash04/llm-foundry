@@ -11,7 +11,7 @@ from typing import Dict, Iterable, Optional
 import gzip
 import pickle
 import boto3
-
+from collections import defaultdict
 import datasets as hf_datasets
 from datasets import Dataset
 from streaming import MDSWriter
@@ -21,6 +21,8 @@ from transformers import AutoTokenizer, PreTrainedTokenizerBase
 
 from llmfoundry.data import ConcatTokensDataset, NoConcatDataset
 import concurrent.futures
+import json
+
 
 class ConcatMode(Enum):
     NO_CONCAT = 'NO_CONCAT'
@@ -54,6 +56,8 @@ def parse_args() -> Namespace:
     parser.add_argument('--bos_text', type=str, required=False, default=None)
     parser.add_argument('--eos_text', type=str, required=False, default=None)
     parser.add_argument('--no_wrap', default=False, action='store_true')
+    parser.add_argument('--max_workers', type=int, required=True)
+    parser.add_argument('--tokenizer_name', type=str, required=False, default='')
 
     parsed = parser.parse_args()
 
@@ -86,6 +90,7 @@ def build_hf_dataset(
     eos_text: str = '',
     no_wrap: bool = False,
     tokenizer: PreTrainedTokenizerBase = None,
+    tokenizer_name: str = '',
 ) -> IterableDataset:
     """Build an IterableDataset over the HF C4 or pile source data.
 
@@ -132,7 +137,8 @@ def build_hf_dataset(
                                       max_length=max_length,
                                       bos_text=bos_text,
                                       eos_text=eos_text,
-                                      no_wrap=no_wrap)
+                                      no_wrap=no_wrap,
+                                      tokenizer_name=tokenizer_name)
     return dataset
 
 
@@ -169,7 +175,13 @@ def generate_samples(
             n_samples += 1
             yield {k: v[idx] for k, v in batch.items()}
 
+languages = {
+    'non_english': ['__label__as', '__label__pa', '__label__bn', '__label__or', '__label__gu', '__label__mr', '__label__kn', '__label__te', '__label__ml', '__label__ta', '__label__hi'],
+    'english': ['__label__en']
+}
+
 def main_helper(args: Namespace, shard_idx: int):
+    
     if args.concat_tokens is not None:
         mode = ConcatMode.CONCAT_TOKENS
         tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
@@ -185,57 +197,49 @@ def main_helper(args: Namespace, shard_idx: int):
     s3_base_path = args.s3_base_path
     shard = f'sh_{shard_idx}'
     lang = args.lang
-    shard_path = os.path.join(s3_base_path, shard, lang)
 
-    # print(DASHLINE)
-    # print(f'Loading arrow data from {shard_path}')
-    # print(DASHLINE)
-    is_data = True
-    try:
-        hf_dataset = Dataset.load_from_disk(shard_path)
-    except:
-        # print(DASHLINE)
-        # print(f'Arrow data not found for shard: {shard_path}')
-        # print(DASHLINE)
-        is_data = False
-    if not is_data:
-        return (lang, 0)
-    dataset = build_hf_dataset(hf_dataset=hf_dataset,
-                               mode=mode,
-                               max_length=args.concat_tokens,
-                               bos_text=args.bos_text,
-                               eos_text=args.eos_text,
-                               no_wrap=args.no_wrap,
-                               tokenizer=tokenizer)
-
-    # Write samples
-    # print(f'Converting to MDS format...')
-    # print(
-    #     f'Note that the progress bar is based on the dataset length before tokenization.'
-    # )
-    # print(f'It will finish at a value below 100% if tokenizing')
-    token_count: int = 0
-    word_count: int = 0
-    if 's3://llm-spark' in args.out_root:
-        path = os.path.join(args.out_root, f'{shard}', f'{lang}', 'train')
+    if lang == 'eng':
+        lang_list = languages['english']
     else:
-        path = os.path.join(args.out_root)
-    # print(DASHLINE)
-    # print(f'Storing streaming data to {path}')
-    # print(DASHLINE)
-    with MDSWriter(columns=columns,
-                   out=path,
-                   compression=args.compression,
-                   max_workers=32) as out:
-        for sample in tqdm(dataset):
-            tokens = np.frombuffer(sample['tokens'], dtype=np.int64).copy()
-            token_count += len(tokens)
-            # word_count += len(tokenizer.decode(tokens).split(' '))
-            out.write(sample)
-    # print(DASHLINE)
-    # print(f'Total Token Count: {token_count}')
-    # print(DASHLINE)
-    return (lang, token_count)
+        lang_list = languages['non_english']
+    
+    lang_stats = []
+    for lang in lang_list:
+        shard_path = os.path.join(s3_base_path, shard, lang)
+        print(f'Working for shard {shard_idx} lang {lang}...')
+        is_data = True
+        try:
+            hf_dataset = Dataset.load_from_disk(shard_path)
+        except:
+            is_data = False
+        if not is_data:
+            lang_stats.append((shard_idx, lang, 0))
+        else:
+            dataset = build_hf_dataset(hf_dataset=hf_dataset,
+                                mode=mode,
+                                max_length=args.concat_tokens,
+                                bos_text=args.bos_text,
+                                eos_text=args.eos_text,
+                                no_wrap=args.no_wrap,
+                                tokenizer=tokenizer,
+                                tokenizer_name=args.tokenizer_name)
+
+            token_count: int = 0
+            if 's3://llm-spark' in args.out_root:
+                path = os.path.join(args.out_root, f'{shard}', f'{lang}', 'train')
+            else:
+                path = os.path.join(args.out_root)
+
+            with MDSWriter(columns=columns,
+                        out=path,
+                        compression=args.compression,
+                        max_workers=32) as out:
+                for sample in dataset:
+                    tokens = np.frombuffer(sample['tokens'], dtype=np.int64).copy()
+                    token_count += len(tokens)
+                    out.write(sample)
+            lang_stats.append((shard_idx, lang, token_count))
+    return lang_stats
 
 def main(args: Namespace) -> None:
     """Main: create C4/pile streaming dataset.
@@ -243,25 +247,39 @@ def main(args: Namespace) -> None:
     Args:
         args (Namespace): Commandline arguments.
     """
-
     shard_idx_list = list(range(args.shard_start_idx, args.shard_end_idx+1))
-    with concurrent.futures.ProcessPoolExecutor(max_workers=100) as executor:
+    # results = [main_helper(args, 0)]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.max_workers) as executor:
         futures = [executor.submit(main_helper, args, shard_idx) for shard_idx in shard_idx_list]
-        results = [future.result() for future in tqdm(concurrent.futures.as_completed(futures))]
+        results = [future.result() for future in concurrent.futures.as_completed(futures)]
     
-    total_shards = 0
-    overall_token_count = 0
+    logs_list = []
     for res in results:
-        total_shards += 0 if res[1] == 0 else 1
-        overall_token_count += res[1]
-    print(DASHLINE)
-    print(DASHLINE)
-    print(f'Total Shards processed: {total_shards}')
-    print(f'Overall Token Count: {overall_token_count}')
-    print(DASHLINE)
-    print(DASHLINE)
+        for lang_token in res:
+            shard_id = lang_token[0]
+            lang = lang_token[1]
+            token_count = lang_token[2]
+            logs_list.append({'snap':'snap_2023_14', 'shard_id': shard_id, 'lang': lang, 'token_count': token_count})
+            # shard_dict[shard_id] += token_count
+            # lang_token_dict[lang] += token_count
+
+    output_file_path = f'{args.tokenizer_name}_logs.jsonl'
+    with open(output_file_path, "a") as output_file:
+        for log_dict in logs_list:
+            json.dump(log_dict, output_file)  # Write the dictionary to the file
+            output_file.write("\n")  # Add a newline to separate records
 
 if __name__ == '__main__':
     main(parse_args())
 
-# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/snap_2023_23/ --concat_tokens 2048 --tokenizer EleutherAI/gpt-neox-20b --eos_text '<|endoftext|>' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 130 --lang __label__hi
+# MPT
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/mpt/snap_2023_14/ --concat_tokens 2048 --tokenizer EleutherAI/gpt-neox-20b --eos_text '<|endoftext|>' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 130 --lang non_eng --max_workers 192 --tokenizer_name mpt
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/mpt/snap_2023_14/ --concat_tokens 2048 --tokenizer EleutherAI/gpt-neox-20b --eos_text '<|endoftext|>' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 130 --lang eng --max_workers 192 --tokenizer_name mpt
+
+# LLAMA
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/llama/snap_2023_14/ --concat_tokens 2048 --tokenizer meta-llama/Llama-2-7b-hf --eos_text '</s>' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 130 --lang non_eng --max_workers 192 --tokenizer_name llama
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/llama/snap_2023_14/ --concat_tokens 2048 --tokenizer meta-llama/Llama-2-7b-hf --eos_text '</s>' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 99 --lang eng --max_workers 192 --tokenizer_name llama
+
+# ai4bharat/indic-bert
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/ --concat_tokens 2048 --tokenizer ai4bharat/indic-bert --eos_text '[SEP]' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 5 --lang non_eng --max_workers 30 --tokenizer_name indicbert
+# time python convert_dataset_arrow_parallelized.py --out_root s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/ --concat_tokens 2048 --tokenizer ai4bharat/indic-bert --eos_text '[SEP]' --compression zstd --s3_base_path s3://llm-spark/llm/pretrain_data/arrow_data/snap_2023_23 --shard_start_idx 0 --shard_end_idx 25 --lang eng --max_workers 25 --tokenizer_name indicbert
