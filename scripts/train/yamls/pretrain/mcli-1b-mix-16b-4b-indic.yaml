@@ -19,7 +19,7 @@ model:
 
 # Tokenizer
 tokenizer:
-  name: EleutherAI/gpt-neox-20b
+  name: ai4bharat/indic-bert
   kwargs:
     model_max_length: ${max_seq_len}
 
