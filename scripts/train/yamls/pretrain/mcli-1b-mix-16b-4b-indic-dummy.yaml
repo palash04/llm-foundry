@@ -37,6 +37,26 @@ train_loader:
         remote: 
           s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/sh_109/__label__kn
         split: train
+      cache_1:
+        local: ./cache_stream/cache_1
+        remote: 
+          s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/sh_109/__label__mr
+        split: train
+      cache_2:
+        local: ./cache_stream/cache_2
+        remote: 
+          s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/sh_0/__label__en
+        split: train
+      cache_3:
+        local: ./cache_stream/cache_3
+        remote: 
+          s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/sh_1/__label__en
+        split: train
+      cache_4:
+        local: ./cache_stream/cache_4
+        remote: 
+          s3://llm-spark/llm/pretrain_data/mds_data/indic_bert/snap_2023_14/sh_2/__label__en
+        split: train
   drop_last: true
   num_workers: 8
 
