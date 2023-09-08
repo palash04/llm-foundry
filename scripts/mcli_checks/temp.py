@@ -8,5 +8,5 @@ from transformers import AutoTokenizer
 # else:
 #     print("Variable not found")
 token = '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'
-tok = AutoTokenizer.from_pretrained('Palash123/ola_eng_indic', token=token)
+tok = AutoTokenizer.from_pretrained('Palash123/ola_eng_indic', use_auth_token=token)
 print(tok)
