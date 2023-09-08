@@ -7,6 +7,6 @@ from transformers import AutoTokenizer
 #     print('I am from git')
 # else:
 #     print("Variable not found")
-
-tokenizer = AutoTokenizer.from_pretrained('Palash123/ola_eng_indic', token='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')
-print(tokenizer)
+token = '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'
+tok = AutoTokenizer.from_pretrained('Palash123/ola_eng_indic', token=token)
+print(tok)
