@@ -142,7 +142,6 @@ def main():
 
     # file_name = "/raid/palash.kamble/LLM/llm-foundry/scripts/data_prep/s3_shards/bpe_50k_s3_shards_list.txt"
     file_name = "shards_list.txt"
-    print(s3_sharded_list)
     # Write the list to the text file
     with open(file_name, 'w') as file:
         for item in s3_sharded_list:
