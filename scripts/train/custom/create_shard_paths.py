@@ -61,10 +61,6 @@ def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
             print('No data left...exiting')
             break
 
-    # print(indic_tokens)
-    # import pdb
-    # pdb.set_trace()
-
     english_shards = []
     list_of_token_counts_eng = lang_dict['__label__en']
     list_of_token_counts_eng = sorted(list_of_token_counts_eng, key=lambda x: x[1], reverse=True)
@@ -79,12 +75,6 @@ def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
         if english_tokens <= 0:
             break
 
-    print(DASHLINE)
-    print(f'english tokens remaining: {english_tokens/1e9}')
-    print(DASHLINE)
-    print(f'indic tokens remaining: {indic_tokens/1e9}')
-    print(DASHLINE)
-
     total_indic_collected = 0
     total_english_collected = 0
     for indic_shard in indic_shards:
@@ -92,8 +82,8 @@ def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
     for english_shard in english_shards:
         total_english_collected += english_shard[2]
     
-    print('Total indic tokens collected: ', total_indic_collected/1e9)
-    print('Total english tokens collected: ', total_english_collected/1e9)
+    print('Total indic tokens collected (in Billions): ', total_indic_collected/1e9)
+    print('Total english tokens collected (in Billions): ', total_english_collected/1e9)
 
     s3_sharded_list = []
 
@@ -124,13 +114,7 @@ def main():
 
     english_tokens = int(english_tokens * 1e9)
     indic_tokens = int(indic_tokens * 1e9)
-    
-    # s3_sharded_list = get_list(
-    #     english_tokens=english_tokens, 
-    #     indic_tokens=indic_tokens, 
-    #     jsonl_path = "/raid/palash.kamble/LLM/llm-foundry/scripts/data_prep/custom_tokenizer_token_counts/bpe_50k.jsonl",
-    #     s3_mds_base_path='s3://llm-spark/llm/pretrain_data/mds_data/custom_tok/tokenizer_bpe_50000/', 
-    #     snap='snap_2023_23')
+
     s3_sharded_list = get_list(
         english_tokens=english_tokens, 
         indic_tokens=indic_tokens, 
@@ -140,7 +124,6 @@ def main():
 
     print('Number of streams: ', len(s3_sharded_list))
 
-    # file_name = "/raid/palash.kamble/LLM/llm-foundry/scripts/data_prep/s3_shards/bpe_50k_s3_shards_list.txt"
     file_name = "shards_list.txt"
     # Write the list to the text file
     with open(file_name, 'w') as file:
