@@ -8,8 +8,6 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--base_yaml_path', type=str, required=True, help="tokenizer count jsonl")
     parsed = parser.parse_args()
-    if parsed.indic_ratio > 1:
-        raise 'ratio must be less than equal to 1'
     return parsed
 
 
