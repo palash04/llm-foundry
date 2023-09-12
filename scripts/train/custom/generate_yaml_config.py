@@ -1,8 +1,6 @@
 import os
 import ruamel.yaml
 from argparse import ArgumentParser
-import boto3
-from config import *
 from tqdm import tqdm
 
 
