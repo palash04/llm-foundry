@@ -7,7 +7,9 @@ DASHLINE = '-'.join(['' for _ in range(100)])
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--jsonl', type=str, required=True, help="tokenizer count jsonl")
+    parser.add_argument('--jsonl_path', type=str, required=True, help="tokenizer count jsonl")
+    parser.add_argument('--s3_mds_base_path', type=str, required=True, help="s3 mds data base path")
+    parser.add_argument('--snap', type=str, required=True, help="snap ex. snap_2023_23 ")
     parser.add_argument('--indic_ratio', type=float, required=True, help="ratio of indic data for training")
     parser.add_argument('--tokens_in_billions', type=int, required=True, help="total number of tokens for training")
     parsed = parser.parse_args()
@@ -113,6 +115,7 @@ def main():
     args = parse_args()
     jsonl_path = args.jsonl_path
     s3_mds_base_path = args.s3_mds_base_path
+    snap = args.snap
     total_tokens = args.tokens_in_billions
     indic_ratio = args.indic_ratio
 
@@ -133,7 +136,7 @@ def main():
         indic_tokens=indic_tokens, 
         jsonl_path = jsonl_path,
         s3_mds_base_path=s3_mds_base_path, 
-        snap='snap_2023_23')
+        snap=snap)
 
     print('Number of streams: ', len(s3_sharded_list))
 
