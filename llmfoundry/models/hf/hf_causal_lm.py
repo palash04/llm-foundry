@@ -37,6 +37,7 @@ except ImportError:
 
 __all__ = ['ComposerHFCausalLM']
 
+DASHLINE = '-'.join(['' for _ in range(100)])
 
 class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
     """Configures a :class:`.HuggingFaceModel` around a Causal LM.
@@ -197,7 +198,10 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
             LlamaAttention.forward = get_llama_attention_patch_fn(
                 attention_patch_type)
             model.config.use_cache = False
-
+        print(DASHLINE)
+        print('HF model - ')
+        print(model)
+        print(DASHLINE)
         composer_model = super().__init__(model=model,
                                           shift_labels=True,
                                           tokenizer=tokenizer,
