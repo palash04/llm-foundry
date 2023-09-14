@@ -6,6 +6,8 @@
 import os
 from typing import Mapping, Union
 
+import torch.nn as nn
+
 # required for loading a python model into composer
 import transformers
 from composer.metrics.nlp import (InContextLearningLMAccuracy,
@@ -204,6 +206,11 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
         print(DASHLINE)
         print('Vocab Size - ')
         print(om_model_config.get('vocab_size', None))
+        print(DASHLINE)
+        model.model.embed_tokens = nn.Embedding(om_model_config.get('vocab_size', None), 4096)
+        print(DASHLINE)
+        print('HF model - ')
+        print(model)
         print(DASHLINE)
         composer_model = super().__init__(model=model,
                                           shift_labels=True,
