@@ -202,6 +202,9 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
         print('HF model - ')
         print(model)
         print(DASHLINE)
+        print('Vocab Size - ')
+        print(om_model_config.get('vocab_size', None))
+        print(DASHLINE)
         composer_model = super().__init__(model=model,
                                           shift_labels=True,
                                           tokenizer=tokenizer,
