@@ -289,12 +289,12 @@ def main(cfg):
     # print(f'Model size: {model_size_gb:0.2f} GB')
 
     # Dataloaders
-    print('Building train loader...')
-    train_loader = build_dataloader(
-        cfg.train_loader,
-        tokenizer,
-        cfg.device_train_batch_size,
-    )
+    # print('Building train loader...')
+    # train_loader = build_dataloader(
+    #     cfg.train_loader,
+    #     tokenizer,
+    #     cfg.device_train_batch_size,
+    # )
     
     # dataloader_stats(train_loader)
 
@@ -344,7 +344,7 @@ def main(cfg):
         run_name=cfg.run_name,
         seed=cfg.seed,
         model=model,
-        train_dataloader=train_loader,
+        # train_dataloader=train_loader,
         eval_dataloader=evaluators,
         optimizers=optimizer,
         schedulers=scheduler,
