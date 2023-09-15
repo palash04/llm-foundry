@@ -315,10 +315,10 @@ def main(cfg):
         evaluators.extend(icl_evaluators)
 
     # Optimizer
-    optimizer = build_optimizer(cfg.optimizer, model)
+    # optimizer = build_optimizer(cfg.optimizer, model)
 
     # Scheduler
-    scheduler = build_scheduler(cfg.scheduler)
+    # scheduler = build_scheduler(cfg.scheduler)
 
     # Loggers
     loggers = [
@@ -346,8 +346,8 @@ def main(cfg):
         model=model,
         # train_dataloader=train_loader,
         eval_dataloader=evaluators,
-        optimizers=optimizer,
-        schedulers=scheduler,
+        # optimizers=optimizer,
+        # schedulers=scheduler,
         max_duration=cfg.max_duration,
         eval_interval=cfg.eval_interval,
         eval_subset_num_batches=cfg.get('eval_subset_num_batches', -1),
