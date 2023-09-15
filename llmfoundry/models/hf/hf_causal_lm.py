@@ -208,12 +208,11 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
         print(om_model_config.get('vocab_size', None))
         print(DASHLINE)
         model.model.embed_tokens = nn.Embedding(om_model_config.get('vocab_size', None), 4096)
+        model.config.vocab_size = om_model_config.get('vocab_size', None)      
         print(DASHLINE)
         print('HF model - ')
         print(model)
-        print(DASHLINE)
-        print(model.config)
-        print(DASHLINE)              
+        print(DASHLINE)       
         composer_model = super().__init__(model=model,
                                           shift_labels=True,
                                           tokenizer=tokenizer,
