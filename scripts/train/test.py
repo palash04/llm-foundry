@@ -341,42 +341,14 @@ def main(cfg):
     # Build the Trainer
     print('Building trainer...')
     trainer = Trainer(
-        run_name=cfg.run_name,
-        seed=cfg.seed,
         model=model,
-        # train_dataloader=train_loader,
         eval_dataloader=evaluators,
-        # optimizers=optimizer,
-        # schedulers=scheduler,
-        max_duration=cfg.max_duration,
-        eval_interval=cfg.eval_interval,
-        eval_subset_num_batches=cfg.get('eval_subset_num_batches', -1),
-        progress_bar=cfg.get('progress_bar', False),
         log_to_console=cfg.get('log_to_console', True),
-        console_log_interval=cfg.get('console_log_interval', '1ba'),
         loggers=loggers,
         callbacks=callbacks,
         precision=cfg.precision,
-        algorithms=algorithms,
-        device_train_microbatch_size=cfg.get('device_train_microbatch_size',
-                                             'auto'),
         fsdp_config=fsdp_config,  # type: ignore
-        save_folder=cfg.get('save_folder', None),
-        save_filename=cfg.get('save_filename',
-                              'ep{epoch}-ba{batch}-rank{rank}.pt'),
-        save_latest_filename=cfg.get('save_latest_filename',
-                                     'latest-rank{rank}.pt'),
-        save_interval=cfg.get('save_interval', '1000ba'),
-        save_num_checkpoints_to_keep=cfg.get('save_num_checkpoints_to_keep',
-                                             -1),
-        save_overwrite=cfg.get('save_overwrite', False),
-        save_weights_only=cfg.get('save_weights_only', False),
         load_path=cfg.get('load_path', None),
-        load_weights_only=cfg.get('load_weights_only', False),
-        load_ignore_keys=cfg.get('load_ignore_keys', None),
-        autoresume=cfg.get('autoresume', False),
-        python_log_level=cfg.get('python_log_level', 'debug'),
-        dist_timeout=cfg.dist_timeout,
     )
 
     print('Logging config...')
