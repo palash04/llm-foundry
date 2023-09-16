@@ -2,7 +2,7 @@ max_seq_len: 4096
 global_seed: 17
 
 # Run Name
-run_name: mcli-mpt1B_eng_2BT_v1 # If left blank, will be read from env var $RUN_NAME
+run_name: mcli-mpt1B_run-4_eng_2BT_v1 # If left blank, will be read from env var $RUN_NAME
 
 # Model
 model:
