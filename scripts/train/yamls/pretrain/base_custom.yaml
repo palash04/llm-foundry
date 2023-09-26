@@ -46,7 +46,7 @@ eval_loader:
     streams:
       cache_0___label__en:
         local: ./cache_stream/cache_0___label__en
-        remote: s3://llm-stage/llm/pretrain_data/mds_data/eval/dum/__label__hi
+        remote: s3://llm-stage/llm/pretrain_data/mds_data/eval/dum_new/__label__hi
         split: test
   drop_last: false
   num_workers: 8
