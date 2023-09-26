@@ -9,12 +9,10 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--jsonl_path', type=str, required=True, help="tokenizer count jsonl")
     parser.add_argument('--s3_mds_base_path', type=str, required=True, help="s3 mds data base path")
-    parser.add_argument('--snap', type=str, default='', help="snap ex. snap_2023_23 ")
-    parser.add_argument('--indic_ratio', type=float, required=True, help="ratio of indic data for training")
-    parser.add_argument('--tokens_in_billions', type=int, required=True, help="total number of tokens for training")
+    parser.add_argument('--lang_list', nargs='+', type=str, help='list of languages')
+    parser.add_argument('--tokens_in_billions_list', nargs='+', type=int, help='tokens list in billions corresponding to each language')
+    parser.add_argument('--epochs_list', nargs='+', type=int, help='number of epochs list corresponding to each language')
     parsed = parser.parse_args()
-    if parsed.indic_ratio > 1:
-        raise 'ratio must be less than equal to 1'
     return parsed
 
 
@@ -22,7 +20,7 @@ def sort_by_token_count(tuples_list):
     return sorted(tuples_list, key=lambda x: x[1], reverse=True)
 
 
-def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
+def get_list(lang_list, tokens_in_billions_list, epochs_list, jsonl_path, s3_mds_base_path):
     all_data_set = set()
     with open(jsonl_path, "r") as input_file:
         for line in input_file:
@@ -44,59 +42,31 @@ def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
 
         lang_dict[lang].append((shard_id, token_count))
     
-    indic_shards = []
-    while indic_tokens > 0:
-        any_data_left = False
-        for key, list_of_token_counts in lang_dict.items():
-            if key != "__label__en":
-                list_of_token_counts = sorted(list_of_token_counts, key=lambda x: x[1], reverse=True)
-                if len(list_of_token_counts) > 0 and list_of_token_counts[0][1] > 0:
-                    indic_shards.append((key, list_of_token_counts[0][0], list_of_token_counts[0][1]))
-                    any_data_left = True
-                    indic_tokens -= list_of_token_counts[0][1]
-                    list_of_token_counts = list_of_token_counts[1:]
-                    lang_dict[key] = list_of_token_counts
-        if not any_data_left:
-            print('No data left...exiting')
-            break
-
-    english_shards = []
-    list_of_token_counts_eng = lang_dict['__label__en']
-    list_of_token_counts_eng = sorted(list_of_token_counts_eng, key=lambda x: x[1], reverse=True)
-    
-    for shard_id_token_count in list_of_token_counts_eng:
-        shard_id = shard_id_token_count[0]
-        token_count = shard_id_token_count[1]
-        if token_count == 0:
-            break
-        english_tokens -= token_count
-        english_shards.append(('__label__en', shard_id, token_count))
-        if english_tokens <= 0:
-            break
-
-    total_indic_collected = 0
-    total_english_collected = 0
-    for indic_shard in indic_shards:
-        total_indic_collected += indic_shard[2]
-    for english_shard in english_shards:
-        total_english_collected += english_shard[2]
-    
-    print('Total indic tokens collected (in Billions): ', total_indic_collected/1e9)
-    print('Total english tokens collected (in Billions): ', total_english_collected/1e9)
-
     s3_sharded_list = []
+    for idx in range(len(lang_list)):
+        lang_shards = []
+        lang = lang_list[idx]
+        lang = f'__label__{lang}'
+        lang_tokens = tokens_in_billions_list[idx] * 1e9
+        epochs = epochs_list[idx]
+        total_lang_collected = 0
+        if lang in lang_dict:
+            list_of_token_counts = lang_dict[lang]
+            while lang_tokens > 0 and len(list_of_token_counts) > 0:
+                list_of_token_counts = sorted(list_of_token_counts, key=lambda x: x[1], reverse=True)
+                for ep in range(epochs):
+                    lang_shards.append((lang, list_of_token_counts[0][0], list_of_token_counts[0][1]))
+                total_lang_collected += list_of_token_counts[0][1]
+                lang_tokens -= list_of_token_counts[0][1]
+                list_of_token_counts = list_of_token_counts[1:]
 
-    for indic_shard in indic_shards:
-        lang = indic_shard[0]
-        shard_id = indic_shard[1]
-        s3_full_path = os.path.join(s3_mds_base_path, f'sh_{shard_id}', lang)
-        s3_sharded_list.append(s3_full_path)
+        print(f'Total tokens for {lang} collected (in Billions): ', total_lang_collected/1e9)
 
-    for english_shard in english_shards:
-        lang = english_shard[0]
-        shard_id = english_shard[1]
-        s3_full_path = os.path.join(s3_mds_base_path, f'sh_{shard_id}', lang)
-        s3_sharded_list.append(s3_full_path)
+        for lang_shard in lang_shards:
+            lang = lang_shard[0]
+            shard_id = lang_shard[1]
+            s3_full_path = os.path.join(s3_mds_base_path, f'sh_{shard_id}', lang)
+            s3_sharded_list.append(s3_full_path)
 
     return s3_sharded_list
     
@@ -104,22 +74,16 @@ def main():
     args = parse_args()
     jsonl_path = args.jsonl_path
     s3_mds_base_path = args.s3_mds_base_path
-    snap = args.snap
-    total_tokens = args.tokens_in_billions
-    indic_ratio = args.indic_ratio
-
-    english_tokens = int(total_tokens * (1 - indic_ratio))
-    indic_tokens = int(total_tokens - english_tokens)
-
-    english_tokens = int(english_tokens * 1e9)
-    indic_tokens = int(indic_tokens * 1e9)
+    lang_list = args.lang_list
+    tokens_in_billions_list = args.tokens_in_billions_list
+    epochs_list = args.epochs_list
 
     s3_sharded_list = get_list(
-        english_tokens=english_tokens, 
-        indic_tokens=indic_tokens, 
+        lang_list=lang_list, 
+        tokens_in_billions_list=tokens_in_billions_list, 
+        epochs_list=epochs_list,
         jsonl_path = jsonl_path,
-        s3_mds_base_path=s3_mds_base_path, 
-        snap=snap)
+        s3_mds_base_path=s3_mds_base_path, )
 
     print('Number of streams: ', len(s3_sharded_list))
 
@@ -134,5 +98,5 @@ if __name__ == "__main__":
     main()
 
 """
-python create_shard_paths.py --indic_ratio 0.2 --tokens_in_billions 20
+python create_shard_paths_exp_multi_lang.py --jsonl_path /raid/palash.kamble/LLM/llm-foundry/scripts/data_prep/exp3.jsonl --s3_mds_base_path s3://llm-spark/llm/pretrain_data/mds_data/exp3_new/ --lang_list hi ta --tokens_in_billions_list 3 1 --epochs_list 1 1
 """
