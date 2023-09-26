@@ -89,13 +89,13 @@ def get_list(english_tokens, indic_tokens, jsonl_path, s3_mds_base_path, snap):
     for indic_shard in indic_shards:
         lang = indic_shard[0]
         shard_id = indic_shard[1]
-        s3_full_path = os.path.join(s3_mds_base_path, snap, f'sh_{shard_id}', lang)
+        s3_full_path = os.path.join(s3_mds_base_path, f'sh_{shard_id}', lang)
         s3_sharded_list.append(s3_full_path)
 
     for english_shard in english_shards:
         lang = english_shard[0]
         shard_id = english_shard[1]
-        s3_full_path = os.path.join(s3_mds_base_path, snap, f'sh_{shard_id}', lang)
+        s3_full_path = os.path.join(s3_mds_base_path, f'sh_{shard_id}', lang)
         s3_sharded_list.append(s3_full_path)
 
     return s3_sharded_list
