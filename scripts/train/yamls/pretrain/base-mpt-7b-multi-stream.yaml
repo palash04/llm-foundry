@@ -1,0 +1,139 @@
+max_seq_len: 2048
+global_seed: 17
+
+# Run Name
+run_name: llm_en # If left blank, will be read from env var $RUN_NAME
+
+# Model
+model:
+  name: mpt_causal_lm
+  init_device: meta
+  d_model: 4096
+  n_heads: 32 # Modified 24->16 so that d_head == 128 to statisfy FlashAttention
+  n_layers: 32
+  expansion_ratio: 4
+  max_seq_len: ${max_seq_len}
+  vocab_size: 50368
+  attn_config:
+    alibi: true
+    attn_impl: triton
+    clip_qkv: 6
+
+# Tokenizer
+tokenizer:
+  name: EleutherAI/gpt-neox-20b
+  kwargs:
+    model_max_length: ${max_seq_len}
+
+# Dataloaders
+eos_token_id: 2 # update for hero run with custom tokenizer
+num_canonical_nodes: 128 # update for hero run, must be codivisible by # physical nodes
+
+train_loader:
+  name: text
+  dataset:
+    eos_token_id: ${eos_token_id}
+    num_canonical_nodes: ${num_canonical_nodes}
+    shuffle: true
+    max_seq_len: ${max_seq_len}
+    shuffle_seed: ${global_seed}
+    streams:
+      
+  drop_last: true
+  num_workers: 8
+
+# Optimization
+scheduler:
+  name: cosine_with_warmup
+  t_warmup: 5000ba
+  alpha_f: 0.1
+
+optimizer:
+  name: decoupled_lionw
+  lr: 0.00012
+  betas:
+  - 0.9
+  - 0.95
+  weight_decay: 0.00012
+
+algorithms:
+  gradient_clipping:
+    clipping_type: norm
+    clipping_threshold: 1.0
+
+max_duration: 1ep
+eval_interval: 1
+eval_first: false
+eval_subset_num_batches: -1
+global_train_batch_size: 1024
+
+# System
+seed: ${global_seed}
+device_eval_batch_size: 4
+device_train_microbatch_size: 4
+# device_train_microbatch_size: auto
+precision: amp_bf16
+
+# FSDP
+fsdp_config:
+  sharding_strategy: SHARD_GRAD_OP # NO_SHARD, FULL_SHARD, SHARD_GRAD_OP
+  mixed_precision: PURE
+  activation_checkpointing: false
+  activation_checkpointing_reentrant: false
+  activation_cpu_offload: false
+  limit_all_gathers: true
+  state_dict_type: full
+  verbose: false
+
+# Logging
+progress_bar: false
+log_to_console: true
+console_log_interval: 100ba
+python_log_level: DEBUG
+
+callbacks:
+  generate_callback:
+    batch_log_interval: 10 # update for hero run, e.g. 2000
+    do_sample: true
+    max_new_tokens: 100
+    prompts:
+    - The quick brown fox jumps over
+    - |-
+      Vegan Banana Bread
+      Instructions:
+      1.
+    - The other day I was explaining what generative AI is to my five year old.
+    temperature: 1
+    top_k: 50
+    top_p: 0.95
+    use_cache: true
+  lr_monitor: {}
+  memory_monitor: {}
+  # mono_ckpt_saver:
+  #   batch_interval: ${save_interval}
+  #   filename: ep{epoch}-ba{batch}/mono.pt
+  #   save_folder: ${save_folder}
+  runtime_estimator: {}
+  scheduled_gc:
+    batch_interval: 2000
+  speed_monitor:
+    window_size: 10
+
+loggers:
+  wandb:
+    rank_zero_only: 'False'
+    init_kwargs: 
+      mode: online
+
+# Checkpoint to local filesystem or remote object store
+autoresume: true
+save_interval: 10ba
+save_num_checkpoints_to_keep: 1  # Important, this cleans up checkpoints saved to DISK
+save_folder: /raid/palash.kamble/LLM/checkpoints
+# save_folder: s3://my-bucket/my-folder/{run_name}/checkpoints
+
+# Load from local filesystem or remote object store
+# load_path: ./gpt-1b/checkpoints/latest-rank{rank}.pt
+# load_path: s3://my-bucket/my-folder/gpt-1b/checkpoints/latest-rank{rank}.pt
+
+
