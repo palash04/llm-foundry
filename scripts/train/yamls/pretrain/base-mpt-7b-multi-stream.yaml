@@ -88,36 +88,16 @@ fsdp_config:
 # Logging
 progress_bar: false
 log_to_console: true
-console_log_interval: 100ba
-python_log_level: DEBUG
+console_log_interval: 1ba
 
 callbacks:
-  generate_callback:
-    batch_log_interval: 10 # update for hero run, e.g. 2000
-    do_sample: true
-    max_new_tokens: 100
-    prompts:
-    - The quick brown fox jumps over
-    - |-
-      Vegan Banana Bread
-      Instructions:
-      1.
-    - The other day I was explaining what generative AI is to my five year old.
-    temperature: 1
-    top_k: 50
-    top_p: 0.95
-    use_cache: true
+  speed_monitor:
+    window_size: 10
   lr_monitor: {}
   memory_monitor: {}
-  # mono_ckpt_saver:
-  #   batch_interval: ${save_interval}
-  #   filename: ep{epoch}-ba{batch}/mono.pt
-  #   save_folder: ${save_folder}
   runtime_estimator: {}
   scheduled_gc:
     batch_interval: 2000
-  speed_monitor:
-    window_size: 10
 
 loggers:
   wandb:
