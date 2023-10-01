@@ -15,8 +15,8 @@ def parse_args():
 
 def get_s3_paths_list(data_path, train_eval, data_name):
     s3_paths_list = []
-
-    txt_path = f'{data_path}/{train_eval}/{data_name}'
+    txt_path = os.path.join(data_path, train_eval, data_name)
+    # txt_path = f'{data_path}/{train_eval}/{data_name}'
     with open(f'{txt_path}', 'r') as file:
         lines = file.readlines()
         for line in lines:
