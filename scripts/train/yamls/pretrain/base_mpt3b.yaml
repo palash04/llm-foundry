@@ -112,6 +112,7 @@ loggers:
       mode: online
 
 # Checkpoint to local filesystem or remote object store
+autoresume: true
 save_interval: 10ba
 save_num_checkpoints_to_keep: 1  # Important, this cleans up checkpoints saved to DISK
 save_folder: /raid/palash.kamble/LLM/checkpoints
