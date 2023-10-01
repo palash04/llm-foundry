@@ -1,0 +1,5 @@
+s3://llm-spark/llm/pretrain_data/mds_data/eval_new/tok_70k_3b_3b_wordpiece_70000/hindi_eval_1_naamapadam/test
+s3://llm-spark/llm/pretrain_data/mds_data/eval_new/tok_70k_3b_3b_wordpiece_70000/hindi_eval_3_indicqa/test
+s3://llm-spark/llm/pretrain_data/mds_data/eval_new/tok_70k_3b_3b_wordpiece_70000/tamil_eval_1_naamapadam/test
+s3://llm-spark/llm/pretrain_data/mds_data/eval_new/tok_70k_3b_3b_wordpiece_70000/hindi_eval_2_xnli/test
+s3://llm-spark/llm/pretrain_data/mds_data/eval_new/tok_70k_3b_3b_wordpiece_70000/tamil_eval_2_xnli/test
