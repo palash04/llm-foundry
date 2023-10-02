@@ -45,30 +45,43 @@ def add_streams(yaml_data, local_cache_dir, data_path, data_name, sources_list, 
                 for key, value in sources_dict.items():
                     if key in shard_path:
                         repeat_val = value
+                        
                 cache_name = f'cache_train_{idx}'
-                if use_mosaic_repeat:
+                if repeat_val > 1:
+                    if use_mosaic_repeat:
+                        new_streams = {
+                            f'{cache_name}': {
+                                'local': f'{local_cache_dir}/{cache_name}',
+                                'remote': f'{shard_path}',
+                                # 'split': 'train',
+                                # 'proportion': 0.9
+                                'repeat': repeat_val
+                            },
+                        }
+                        yaml_data['train_loader']['dataset']['streams'].update(new_streams)
+                    else:
+                        for repeat_idx in range(repeat_val):
+                            cache_name_ = cache_name + f'_repeat_{repeat_idx}'
+                            new_streams = {
+                                f'{cache_name_}': {
+                                    'local': f'{local_cache_dir}/{cache_name_}',
+                                    'remote': f'{shard_path}',
+                                    # 'split': 'train',
+                                    # 'proportion': 0.9
+                                },
+                            }
+                            yaml_data['train_loader']['dataset']['streams'].update(new_streams)
+                else:
                     new_streams = {
                         f'{cache_name}': {
                             'local': f'{local_cache_dir}/{cache_name}',
                             'remote': f'{shard_path}',
                             # 'split': 'train',
                             # 'proportion': 0.9
-                            'repeat': repeat_val
                         },
                     }
                     yaml_data['train_loader']['dataset']['streams'].update(new_streams)
-                else:
-                    for repeat_idx in range(repeat_val):
-                        cache_name_ = cache_name + f'_repeat_{repeat_idx}'
-                        new_streams = {
-                            f'{cache_name_}': {
-                                'local': f'{local_cache_dir}/{cache_name_}',
-                                'remote': f'{shard_path}',
-                                # 'split': 'train',
-                                # 'proportion': 0.9
-                            },
-                        }
-                        yaml_data['train_loader']['dataset']['streams'].update(new_streams)
+                
     else:
         if len(train_s3_paths_list) > 0:
             yaml_data['train_loader']['dataset']['streams'] = {}
