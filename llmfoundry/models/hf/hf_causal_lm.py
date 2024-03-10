@@ -133,7 +133,7 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
 
         # Construct the Hugging Face config to use
         config = AutoConfig.from_pretrained(
-            pretrained_model_name_or_path,
+            'google/gemma-7b',
             trust_remote_code=trust_remote_code,
             use_auth_token=use_auth_token,
             attn_implementation=requested_attention_implementation,
