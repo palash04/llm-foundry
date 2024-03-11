@@ -278,6 +278,10 @@ class ComposerHFCausalLM(HuggingFaceModelWithZLoss):
             peft_config=peft_config,
         )
 
+        print('-'*100)
+        print(model)
+        print('-'*100)
+
     @staticmethod
     def _patch_attention_type(model: PreTrainedModel,
                               attention_patch_type: str) -> None:
